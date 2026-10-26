@@ -1,6 +1,6 @@
 ---
 name: glm52-pd-deploy
-description: Deploy, validate and size GLM-5.2-NVFP4 prefill/decode (P/D) disaggregated serving on vLLM + Dynamo (B12X PCIe DMA on Prefill, FlashInfer PCIe IPC on Decode, CUDA Graph PIECEWISE, NIXL/UCX KV transfer). Use when asked to deploy GLM 5.2 P/D, pick the P:D ratio, find the latest Dynamo runtime image, build or port the dual-PCIe image on a new Dynamo/vLLM version, verify a deployment from logs, or debug low MTP acceptance / no gain from adding Decode nodes.
+description: Deploy, validate and size GLM-5.2-NVFP4 prefill/decode (P/D) disaggregated serving on vLLM + Dynamo (B12X PCIe DMA on Prefill, FlashInfer PCIe IPC on Decode, CUDA Graph PIECEWISE, NIXL/UCX KV transfer). Use when asked to deploy GLM 5.2 P/D, pick the P:D ratio, find the latest Dynamo runtime image, build or port the dual-PCIe image on a new Dynamo/vLLM version, verify a deployment from logs, benchmark P/D against an IFB baseline and compute the throughput/efficiency gain, or debug low MTP acceptance / no gain from adding Decode nodes.
 ---
 
 # GLM-5.2 P/D deployment
@@ -86,6 +86,16 @@ All required checks must PASS (B12X enabled on Prefill; `FLASHINFER_PCIE_IPC` on
 ### 7. End-to-end acceptance and go-live (Handbook s8)
 Step the concurrency ladder for each candidate ratio (cold and target-reuse), N=100 per formal point with 100% completion, restart or clear KV between points, one soak test and one worker-restart test. Plan capacity from end-to-end results (they sit below the single-pool upper bound because of KV transfer, routing, queueing). Go-live checklist is in Handbook s8.3.
 
+### 8. Benchmark P/D vs IFB and compute the gain (BENCHMARK.md)
+Final deliverable: the measured gain of the P/D deployment over a single-node IFB NCCL baseline under the same SLOs.
+1. Same image, model, KV dtype, MTP3, prefix cache; workload 58,944 shared prefix + 6,592 suffix -> 65,536 in / 1,024 out; N=100 per point; 1 warm-up; fixed seed. **IFB must use `--max-model-len 66564`** (65537/66560 gave invalid runs).
+2. P/D ladder: `templates/bench_ladder.sh pd`. Baseline: `templates/start_ifb.sh` then `templates/bench_ladder.sh ifb`. Cover at least 1-2 failing concurrencies above each gate's last pass; clean KV / restart between formal points.
+3. Compute and write the report:
+```bash
+python3 scripts/analyze_benchmark.py --ifb <ifb dir> --pd <pd dir> --ifb-nodes 1 --pd-nodes 2 --gpus-per-node 8 --cp <C_P_A> <C_P_B> --cd <C_D> --out report.md
+```
+4. Report **both** deployment gain (P/D req/s / IFB req/s - 1) and the fair **per-node / per-GPU gain**, plus user-speed and TTFT deltas and the achievement vs the 1P1D bound. Reproduction target on the validated hardware: +200% / +50% (Gate A) and +236% / +68% (Gate B) - see `references/BENCHMARK.md` s4. If the gain is far lower, follow its s5 checklist before concluding. Never quote a failing point's peak.
+
 ## Diagnose fast
 
 | Symptom | Likely cause -> action |
@@ -104,6 +114,7 @@ Correctness (outputs, MTP acceptance, KV integrity) -> hardware comms -> actual 
 
 ## Files
 - `references/DEPLOYMENT_HANDBOOK.md` - full guide (snapshot; if the user's repo copy is newer, prefer it and update this snapshot).
+- `references/BENCHMARK.md` (P/D vs IFB protocol, formulas, reproduction target), `scripts/analyze_benchmark.py`, `templates/bench_ladder.sh`, `templates/start_ifb.sh`.
 - `references/validated-images.md` - images that passed acceptance; append after each validation.
 - `references/IMAGE_BUILD.md` (how the 1.5.1 image was made), `references/PORTING_GUIDE.md` (port to a new vLLM), `Dockerfile.dual`, `patches/vllm-0.28/` (use `apply_all.py`; `TARGET.json` makes it discoverable).
 - `scripts/ngc_info.py`, `auto_build.py`, `probe_base_image.py`, `check_patch_compat.py`, `scaffold_port.py`, `_common.py`, `build_dual_image.sh` (legacy).

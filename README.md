@@ -28,14 +28,15 @@ image lookup (listing is anonymous; `docker pull` may need `docker login nvcr.io
 
 | Path | Purpose |
 |---|---|
-| `SKILL.md` | Entry point: hard rules, the 8-step workflow, image decision tree, troubleshooting |
+| `SKILL.md` | Entry point: hard rules, the 9-step workflow (0-8, ends with a P/D-vs-IFB benchmark), image decision tree, troubleshooting |
 | `scripts/ngc_info.py` | Dynamo tag -> bundled vLLM / CUDA, read from NGC image labels (no pull) |
 | `scripts/auto_build.py` | Pull newest official image, probe, check patch, build (`Dockerfile.dual`), smoke test, report |
 | `scripts/check_patch_compat.py`, `probe_base_image.py`, `scaffold_port.py` | Anchor check without running the image; base-image inspection; port scaffolding for a new vLLM |
 | `scripts/verify_deployment.py`, `compute_pd_ratio.py`, `find_latest_image.py` | Log verification; ratio math; derived-image discovery |
+| `scripts/analyze_benchmark.py` | Apply SLO gates to `vllm bench serve` results and compute the P/D gain over an IFB baseline (deployment, per-node, per-GPU, user speed, TTFT) |
 | `patches/vllm-0.28/` | The dual-PCIe patch for vLLM 0.28.0 (`apply_all.py`, `original/`, `final/`, `TARGET.json`) |
-| `references/` | Deployment handbook, image build notes, **porting guide**, validated-image list |
-| `templates/` | Frontend / Prefill / Decode launch scripts and an env example |
+| `references/` | Deployment handbook, image build notes, **porting guide**, **benchmark protocol**, validated-image list |
+| `templates/` | Frontend / Prefill / Decode / IFB-baseline launch scripts, a benchmark ladder script and an env example |
 
 ## Status and limits (please read)
 
