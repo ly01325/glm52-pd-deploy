@@ -1,0 +1,9 @@
+{
+  "vllm": "0.28.0",
+  "vllm_series": "0.28",
+  "python": "3.12",
+  "vllm_site_packages_root": "/usr/local/lib/python3.12/dist-packages/vllm",
+  "validated_on": {"dynamo": "1.5.1", "image_tag": "dynamo-vllm-runtime:1.5.1-vllm028-pcie-dual", "date": "2026-10-11"},
+  "pip": {"b12x": "1.3.0", "flashinfer-python": "0.7.0.post1", "flashinfer-cubin": "0.7.0.post1", "nccl-extensions": "0.1.0", "nvidia-cudnn-frontend": "1.30.0"},
+  "notes": "flashinfer_jit_cache was copied from a validated vLLM 0.31 container in the original build; Dockerfile.dual tries pip instead (best effort, JIT compile is the fallback)."
+}

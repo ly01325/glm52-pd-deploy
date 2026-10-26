@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+build-reports/
+templates/common.env
+.DS_Store

@@ -1,0 +1,40 @@
+# Reproducible build of the "dual PCIe" runtime image (B12X PCIe DMA + FlashInfer PCIe IPC all-reduce).
+# Replaces the original docker-commit recipe. Build context = this skill directory.
+#
+#   docker build -f Dockerfile.dual \
+#     --build-arg BASE=nvcr.io/nvidia/ai-dynamo/vllm-runtime:1.5.1 \
+#     --build-arg PATCH_SET=vllm-0.28 \
+#     -t dynamo-vllm-runtime:1.5.1-vllm028-pcie-dual .
+# (scripts/auto_build.py does this and fills the args from patches/<set>/TARGET.json and the probed base image)
+#
+# UNVERIFIED on a real build host. Best-effort items are marked.
+ARG BASE
+FROM ${BASE}
+ARG PATCH_SET=vllm-0.28
+ARG RUN_USER=
+ARG B12X_VER=1.3.0
+ARG FI_VER=0.7.0.post1
+ARG FI_CUBIN_VER=${FI_VER}
+ARG NCCL_EXT_VER=0.1.0
+ARG CUDNN_FE_VER=1.30.0
+# empty = keep what the base image already has for that package (don't downgrade a newer base)
+ARG SKIP_FLASHINFER=0
+# flashinfer-jit-cache wheel index for the base's CUDA (best effort; JIT compiles on first use if unavailable)
+ARG FI_JIT_INDEX=https://flashinfer.ai/whl/cu130
+USER root
+COPY patches/${PATCH_SET}/ /opt/glm52-patch/
+RUN set -eux; \
+    python3 -m pip install --no-cache-dir --no-deps "b12x==${B12X_VER}" "nccl-extensions==${NCCL_EXT_VER}" "nvidia-cudnn-frontend==${CUDNN_FE_VER}"; \
+    if [ "${SKIP_FLASHINFER}" != "1" ]; then \
+      python3 -m pip install --no-cache-dir --no-deps "flashinfer-python==${FI_VER}" "flashinfer-cubin==${FI_CUBIN_VER}"; \
+      python3 -m pip install --no-cache-dir --no-deps --extra-index-url "${FI_JIT_INDEX}" "flashinfer-jit-cache==${FI_VER}" \
+        || echo "WARN: flashinfer-jit-cache wheel not installed (best effort); kernels will JIT-compile on first use"; \
+    fi
+# idempotent, anchor-checked patch; fails the build (leaving no half-patched file) if the vLLM version does not match
+RUN set -eux; \
+    python3 /opt/glm52-patch/apply_all.py --backup-dir /opt/glm52-patch/vllm-original; \
+    rm -rf /home/dynamo/.cache/vllm; \
+    python3 -c "import vllm.distributed.device_communicators.b12x_pcie_dma, vllm.distributed.device_communicators.flashinfer_pcie_ipc_all_reduce, vllm.envs as e; print('import ok', e.VLLM_ALLREDUCE_USE_B12X_PCIE_DMA, e.VLLM_ALLREDUCE_USE_FLASHINFER_PCIE_IPC)"
+LABEL glm52.dual-pcie.patch-set="${PATCH_SET}" glm52.dual-pcie.base="${BASE}"
+# restore the base image's runtime user (probe_base_image.py reports it; empty => stay root)
+USER ${RUN_USER:-root}

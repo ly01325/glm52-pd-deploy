@@ -1,0 +1,14 @@
+glm52-pd-deploy
+
+Portions of this repository are derived from vLLM (https://github.com/vllm-project/vllm),
+Copyright contributors to the vLLM project, licensed under the Apache License, Version 2.0:
+  patches/vllm-0.28/original/   unmodified vLLM 0.28.0 source files (reference copies)
+  patches/vllm-0.28/final/      vLLM 0.28.0 source files modified to add B12X PCIe DMA and
+                                FlashInfer PCIe IPC all-reduce back ends (modified files and
+                                two new modules; original SPDX headers retained)
+These files remain under their original license. Changes are described in
+references/IMAGE_BUILD.md and references/PORTING_GUIDE.md.
+
+This project is not affiliated with or endorsed by NVIDIA, the vLLM project, or Z.ai.
+"NVIDIA", "Dynamo", "NGC" and other names are trademarks of their respective owners.
+Container images referenced here are pulled from their official registries; none are redistributed.
